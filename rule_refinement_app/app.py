@@ -37,6 +37,7 @@ DEFAULTS: dict[str, Any] = {
     "refinement_results": None,
     "flow_stage": "selection",
     "session_history": [],
+    "_pending_rule_override": None,  # set by re-evaluate; applied before widget renders
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
@@ -323,11 +324,18 @@ with left_col:
     render_readonly_properties(element)
 
 with right_col:
+    # Apply a pending re-evaluate override BEFORE the widget is instantiated.
+    # This is the only safe window to write to a widget's session_state key.
+    widget_key = f"rule_text_{selected}"
+    if st.session_state._pending_rule_override is not None:
+        st.session_state[widget_key] = st.session_state._pending_rule_override
+        st.session_state._pending_rule_override = None
+
     current_text = st.session_state.edited_business_text
 
     new_text = render_rule_text_area(
         default_text=current_text,
-        key=f"rule_text_{selected}",
+        key=widget_key,
     )
 
     if new_text != current_text:
@@ -374,6 +382,10 @@ elif st.session_state.flow_stage in ("checkpoint_done", "refining", "complete"):
 
 if st.session_state.flow_stage == "complete" and st.session_state.refinement_results:
     def on_reevaluate(improved_text: str) -> None:
+        # Store the override in a neutral key — we cannot write to the widget key
+        # after it has already been instantiated in the same render cycle.
+        # On the next rerun it will be applied before the text_area is created.
+        st.session_state._pending_rule_override = improved_text
         st.session_state.edited_business_text = improved_text
         st.session_state.text_last_modified = datetime.now().strftime("%H:%M:%S")
         _reset_results()
