@@ -1,4 +1,4 @@
-"""Checkpoint evaluation result card renderer."""
+"""Checkpoint evaluation result renderer — compact card layout."""
 
 from __future__ import annotations
 
@@ -19,73 +19,64 @@ def _escape(text: str) -> str:
 
 
 def render_confidence_arc(pass_rate: float) -> None:
-    """Render an SVG radial arc confidence meter (0–100%)."""
+    """SVG radial arc confidence meter."""
     pct = int(pass_rate * 100)
-    r = 54
-    circumference = 2 * math.pi * r
-    dash = circumference * pass_rate
-    gap = circumference - dash
+    r = 44
+    circ = 2 * math.pi * r
+    dash, gap = circ * pass_rate, circ * (1 - pass_rate)
+    color = "#00E676" if pct >= 80 else ("#FFD740" if pct >= 60 else "#FF5252")
 
-    if pct >= 80:
-        arc_color = "#00E676"
-    elif pct >= 60:
-        arc_color = "#FFD740"
-    else:
-        arc_color = "#FF5252"
-
-    svg = f"""
-    <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
-      <svg width="130" height="130" viewBox="0 0 130 130">
-        <circle cx="65" cy="65" r="{r}" fill="none"
-          stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
-        <circle cx="65" cy="65" r="{r}" fill="none"
-          stroke="{arc_color}" stroke-width="10"
-          stroke-dasharray="{dash:.2f} {gap:.2f}"
-          stroke-linecap="round"
-          transform="rotate(-90 65 65)"
-          style="transition: stroke-dasharray 0.8s ease;"/>
-        <text x="65" y="62" text-anchor="middle"
-          font-family="DM Sans,sans-serif" font-size="22" font-weight="700"
-          fill="{arc_color}">{pct}%</text>
-        <text x="65" y="80" text-anchor="middle"
-          font-family="DM Sans,sans-serif" font-size="10"
-          fill="rgba(230,241,255,0.6)">CONFIDENCE</text>
-      </svg>
-    </div>
-    """
-    st.markdown(svg, unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <svg width="108" height="108" viewBox="0 0 108 108">
+            <circle cx="54" cy="54" r="{r}" fill="none"
+              stroke="rgba(255,255,255,0.07)" stroke-width="9"/>
+            <circle cx="54" cy="54" r="{r}" fill="none"
+              stroke="{color}" stroke-width="9"
+              stroke-dasharray="{dash:.2f} {gap:.2f}"
+              stroke-linecap="round"
+              transform="rotate(-90 54 54)"/>
+            <text x="54" y="51" text-anchor="middle"
+              font-family="DM Sans,sans-serif" font-size="19" font-weight="700"
+              fill="{color}">{pct}%</text>
+            <text x="54" y="66" text-anchor="middle"
+              font-family="DM Sans,sans-serif" font-size="9"
+              fill="rgba(230,241,255,0.5)">CONFIDENCE</text>
+          </svg>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def render_summary_banner(summary: dict[str, int], pass_rate: float) -> None:
+def render_summary_banner(summary: dict[str, int]) -> None:
+    passed, failed = summary["passed"], summary["failed"]
     total = summary["total_checkpoints"]
-    passed = summary["passed"]
-    failed = summary["failed"]
+    fail_bg = "rgba(255,82,82,0.12)" if failed else "rgba(255,255,255,0.04)"
+    fail_col = "#FF5252" if failed else "rgba(230,241,255,0.35)"
+    fail_bdr = "rgba(255,82,82,0.3)" if failed else "rgba(255,255,255,0.08)"
 
     st.markdown(
         f"""
         <div class="dq-card dq-animate-in" style="
-            display:flex; align-items:center; gap:1.2rem;
-            flex-wrap:wrap; margin-bottom:0.5rem;">
-          <div style="flex:1; min-width:160px;">
-            <div class="dq-label">Evaluation Summary</div>
-            <div style="font-size:1.55rem; font-weight:700; color:#E6F1FF; margin-top:0.2rem;">
+            display:flex;align-items:center;gap:1rem;flex-wrap:wrap;
+            padding:0.65rem 1rem;margin-bottom:0.5rem;">
+          <div style="flex:1;min-width:120px;">
+            <div class="dq-label">Summary</div>
+            <div style="font-size:1.3rem;font-weight:700;color:#E6F1FF;margin-top:0.1rem;">
               {total} Checkpoints
             </div>
           </div>
-          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-            <span style="
-              background:rgba(0,230,118,0.12); color:#00E676;
-              border:1px solid rgba(0,230,118,0.3);
-              border-radius:20px; padding:0.3rem 0.9rem;
-              font-weight:700; font-size:1rem; letter-spacing:0.03em;">
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+            <span style="background:rgba(0,230,118,0.12);color:#00E676;
+              border:1px solid rgba(0,230,118,0.3);border-radius:20px;
+              padding:0.25rem 0.8rem;font-weight:700;font-size:0.92rem;">
               ✓ {passed} Passed
             </span>
-            <span style="
-              background:{'rgba(255,82,82,0.12)' if failed else 'rgba(0,230,118,0.06)'};
-              color:{'#FF5252' if failed else 'rgba(230,241,255,0.45)'};
-              border:1px solid {'rgba(255,82,82,0.3)' if failed else 'rgba(255,255,255,0.08)'};
-              border-radius:20px; padding:0.3rem 0.9rem;
-              font-weight:700; font-size:1rem; letter-spacing:0.03em;">
+            <span style="background:{fail_bg};color:{fail_col};
+              border:1px solid {fail_bdr};border-radius:20px;
+              padding:0.25rem 0.8rem;font-weight:700;font-size:0.92rem;">
               {'✗' if failed else '–'} {failed} Failed
             </span>
           </div>
@@ -95,30 +86,36 @@ def render_summary_banner(summary: dict[str, int], pass_rate: float) -> None:
     )
 
 
-def render_checkpoint_card(cp: dict[str, str], index: int) -> None:
-    outcome = cp["outcome"].lower()
-    is_pass = outcome == "pass"
-    pill_bg = "rgba(0,230,118,0.13)" if is_pass else "rgba(255,82,82,0.13)"
-    pill_color = "#00E676" if is_pass else "#FF5252"
-    pill_border = "rgba(0,230,118,0.35)" if is_pass else "rgba(255,82,82,0.35)"
-    pill_label = "PASS" if is_pass else "FAIL"
+def render_checkpoint_card(cp: dict[str, str]) -> None:
+    is_pass = cp["outcome"].lower() == "pass"
+    pill_bg  = "rgba(0,230,118,0.13)"  if is_pass else "rgba(255,82,82,0.13)"
+    pill_col = "#00E676" if is_pass else "#FF5252"
+    pill_bdr = "rgba(0,230,118,0.35)" if is_pass else "rgba(255,82,82,0.35)"
+    label    = "PASS" if is_pass else "FAIL"
 
+    # Render compact row; evidence in expander below
     st.markdown(
         f"""
-        <div class="dq-card dq-animate-in" style="display:flex;align-items:flex-start;gap:1rem;">
-          <div style="flex-shrink:0;padding-top:0.15rem;">
-            <span style="
-              background:{pill_bg}; color:{pill_color};
-              border:1px solid {pill_border};
-              border-radius:6px; padding:0.2rem 0.65rem;
-              font-size:0.72rem; font-weight:700; letter-spacing:0.1em;
-              font-family:'Space Mono',monospace;">{pill_label}</span>
-          </div>
-          <div style="flex:1; min-width:0;">
-            <div style="font-weight:600; font-size:0.95rem; color:#E6F1FF; margin-bottom:0.25rem;">
+        <div class="dq-cp-card dq-animate-in">
+          <span style="
+            flex-shrink:0;
+            background:{pill_bg};color:{pill_col};
+            border:1px solid {pill_bdr};border-radius:5px;
+            padding:0.12rem 0.5rem;font-size:0.68rem;font-weight:700;
+            font-family:'Space Mono',monospace;letter-spacing:0.08em;">
+            {label}
+          </span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:0.88rem;color:#E6F1FF;
+              white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               {_escape(cp['checkpoint_key'])}
             </div>
-            <div class="dq-muted">{_escape(cp['notes'])}</div>
+            <div style="font-size:0.8rem;color:rgba(230,241,255,0.6);
+              margin-top:0.1rem;line-height:1.4;
+              display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+              overflow:hidden;">
+              {_escape(cp['notes'])}
+            </div>
           </div>
         </div>
         """,
@@ -133,35 +130,35 @@ def render_dimension_analysis(dim_analysis: dict[str, Any]) -> None:
     should_split = dim_analysis.get("should_split", False)
     split_reason = dim_analysis.get("split_reason", "")
 
-    chips_html = " ".join(
+    chips = " ".join(
         f'<span style="background:rgba(0,212,255,0.12);color:#00D4FF;'
         f'border:1px solid rgba(0,212,255,0.3);border-radius:20px;'
-        f'padding:0.2rem 0.75rem;font-size:0.82rem;font-weight:600;">'
+        f'padding:0.18rem 0.7rem;font-size:0.8rem;font-weight:600;">'
         f'{_escape(d)}</span>'
         for d in dims
     )
-
     split_badge = (
         '<span style="background:rgba(255,82,82,0.12);color:#FF5252;'
         'border:1px solid rgba(255,82,82,0.3);border-radius:6px;'
-        'padding:0.15rem 0.6rem;font-size:0.75rem;font-weight:700;">SPLIT RECOMMENDED</span>'
-        if should_split
-        else
-        '<span style="background:rgba(0,230,118,0.10);color:#00E676;'
-        'border:1px solid rgba(0,230,118,0.25);border-radius:6px;'
-        'padding:0.15rem 0.6rem;font-size:0.75rem;font-weight:700;">NO SPLIT REQUIRED</span>'
+        'padding:0.12rem 0.55rem;font-size:0.72rem;font-weight:700;">SPLIT RECOMMENDED</span>'
+        if should_split else
+        '<span style="background:rgba(0,230,118,0.09);color:#00E676;'
+        'border:1px solid rgba(0,230,118,0.22);border-radius:6px;'
+        'padding:0.12rem 0.55rem;font-size:0.72rem;font-weight:700;">NO SPLIT REQUIRED</span>'
     )
-
     st.markdown(
         f"""
-        <div class="dq-card dq-animate-in">
-          <div class="dq-label" style="margin-bottom:0.6rem;">Dimension Analysis</div>
-          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.6rem;">
-            <span style="color:rgba(230,241,255,0.6);font-size:0.82rem;">Detected:</span>
-            {chips_html}
+        <div class="dq-card dq-animate-in" style="padding:0.65rem 1rem;">
+          <div class="dq-label" style="margin-bottom:0.45rem;">Dimension Analysis</div>
+          <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;
+            margin-bottom:0.45rem;">
+            <span style="color:rgba(230,241,255,0.55);font-size:0.8rem;">Detected:</span>
+            {chips}
             {split_badge}
           </div>
-          <div class="dq-muted" style="font-size:0.84rem;">{_escape(split_reason)}</div>
+          <div style="color:rgba(230,241,255,0.6);font-size:0.82rem;line-height:1.5;">
+            {_escape(split_reason)}
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -169,26 +166,22 @@ def render_dimension_analysis(dim_analysis: dict[str, Any]) -> None:
 
 
 def render_checkpoint_results(results: dict[str, Any]) -> None:
-    """Main entry point — renders the full checkpoint section."""
-    cp_eval = results["checkpoint_evaluation"]
-    summary = cp_eval["summary"]
+    cp_eval    = results["checkpoint_evaluation"]
+    summary    = cp_eval["summary"]
     checkpoints = cp_eval["checkpoint_results"]
     dim_analysis = cp_eval["dimension_analysis"]
+    pass_rate  = summary["passed"] / max(summary["total_checkpoints"], 1)
 
-    pass_rate = summary["passed"] / max(summary["total_checkpoints"], 1)
-
-    st.markdown('<div class="dq-section-title">Checkpoint Evaluation Results</div>', unsafe_allow_html=True)
-
-    col_summary, col_meter = st.columns([3, 1])
-    with col_summary:
-        render_summary_banner(summary, pass_rate)
+    col_sum, col_meter = st.columns([3, 1])
+    with col_sum:
+        render_summary_banner(summary)
     with col_meter:
         render_confidence_arc(pass_rate)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
 
-    for i, cp in enumerate(checkpoints):
-        render_checkpoint_card(cp, i)
+    for cp in checkpoints:
+        render_checkpoint_card(cp)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     render_dimension_analysis(dim_analysis)
